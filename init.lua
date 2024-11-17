@@ -348,6 +348,7 @@ require('lazy').setup({
     branch = '0.1.x',
     dependencies = {
       'nvim-lua/plenary.nvim',
+      'jvgrootveld/telescope-zoxide',
       { -- If encountering errors, see telescope-fzf-native README for installation instructions
         'nvim-telescope/telescope-fzf-native.nvim',
 
@@ -392,13 +393,30 @@ require('lazy').setup({
         -- You can put your default mappings / updates / etc. in here
         --  All the info you're looking for is in `:help telescope.setup()`
         --
-        -- defaults = {
-        --   mappings = {
-        --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-        --   },
-        -- },
+        defaults = {
+          file_ignore_patterns = {
+            'node_modules/.*',
+            '%.env',
+            'go/pkg/.*',
+            'venv/.*',
+            'yarn.lock',
+            'package%-lock.json',
+            'lazy%-lock.json',
+            'init.sql',
+            'target/.*',
+            '.git/.*',
+          },
+          --   mappings = {
+          --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
+          --   },
+        },
         -- pickers = {}
         extensions = {
+          file_browser = {
+            grouped = true,
+            hidden = true,
+            respect_gitignore = true,
+          },
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
           },
@@ -444,6 +462,41 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sn', function()
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
       end, { desc = '[S]earch [N]eovim files' })
+
+      -- Enable directory jumping with zoxide
+      local telescope = require 'telescope'
+      local z_utils = require 'telescope._extensions.zoxide.utils'
+
+      telescope.setup {
+        extensions = {
+          zoxide = {
+            prompt_title = '[ zoxide jum ]',
+            mappings = {
+              default = {
+                after_action = function(selection)
+                  print('Update to (' .. selection.z_score .. ') ' .. selection.path)
+                end,
+              },
+              ['<C-s>'] = {
+                before_action = function()
+                  print 'before C-s'
+                end,
+                action = function(selection)
+                  vim.cmd.edit(selection.path)
+                end,
+              },
+              ['<C-q>'] = { action = z_utils.create_basic_command 'split' },
+            },
+          },
+        },
+      }
+
+      -- Load the extension
+      telescope.load_extension 'zoxide'
+
+      -- Add keymapping
+      vim.keymap.set('n', '<leader>cd', telescope.extensions.zoxide.list)
+      -- end of enabling directory jumping
     end,
   },
 
@@ -641,6 +694,12 @@ require('lazy').setup({
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
+        -- {
+        -- 'pmizio/typescript-tools.nvim',
+        -- dependencies = { 'nvim-lua/plenary.nvim', 'neovim/nvim-lspconfig' },
+        -- opts = {},
+        -- },
+        -- alternative to the standard: ts_ls = {},
         ts_ls = {},
         --
 
@@ -652,6 +711,13 @@ require('lazy').setup({
             Lua = {
               completion = {
                 callSnippet = 'Replace',
+              },
+              diagnostics = {
+                -- Get the language server to recognize the `vim` global
+                globals = {
+                  'vim',
+                  'require',
+                },
               },
               -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
               -- diagnostics = { disable = { 'missing-fields' } },
